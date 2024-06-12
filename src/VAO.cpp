@@ -22,7 +22,7 @@ void VAO::linkVBO(VBO vbo, GLuint posLayout, GLuint normalLayout, GLuint texLayo
 
     vbo.unbind();
 }
-void VAO::linkVBO(VBO vbo, GLuint posLayout, GLuint colorLayout)
+void VAO::linkVBO(VBO vbo, GLuint posLayout, GLuint colorLayout, bool color)
 {
     vbo.bind();
 
@@ -30,8 +30,21 @@ void VAO::linkVBO(VBO vbo, GLuint posLayout, GLuint colorLayout)
     glVertexAttribPointer(posLayout, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), (void *)0);
     glEnableVertexAttribArray(posLayout);
     // color
-    glVertexAttribPointer(colorLayout, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), (void*)(3 * sizeof(GL_FLOAT)));
+    glVertexAttribPointer(colorLayout, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GL_FLOAT), (void *)(3 * sizeof(GL_FLOAT)));
     glEnableVertexAttribArray(colorLayout);
+
+    vbo.unbind();
+}
+
+void VAO::linkVBO(VBO vbo, GLuint posLayout, GLuint texLayout)
+{
+    vbo.bind();
+    // position
+    glVertexAttribPointer(posLayout, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (void *)0);
+    glEnableVertexAttribArray(posLayout);
+    //texture
+    glVertexAttribPointer(texLayout, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (void*)(3 * sizeof(GL_FLOAT)));
+    glEnableVertexAttribArray(texLayout);
 
     vbo.unbind();
 }

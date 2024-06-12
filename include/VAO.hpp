@@ -8,7 +8,8 @@ class VAO{
     public:
         VAO();
         void linkVBO(VBO vbo, GLuint posLayout, GLuint normalLayout, GLuint texLayout);
-        void linkVBO(VBO vbo, GLuint posLayout, GLuint colorLayout);
+        void linkVBO(VBO vbo, GLuint posLayout, GLuint colorLayout, bool color);
+        void linkVBO(VBO vbo, GLuint posLayout, GLuint texLayout);
         
         void bind();
         void unbind();

@@ -7,6 +7,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "include/stb_image.h"
 #include "include/Model.hpp"
+#include "include/VAO.hpp"
+#include "include/VBO.hpp"
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -25,9 +27,78 @@ const float sensetivity_x = 7.f;
 const float sensetivity_y = 5.f;
 bool can_rotate = false;
 
+// function declerations
+void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view_pos);
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos);
+
+// positions
+glm::vec3 pos1(-1.f, 1.f, 0.f);
+glm::vec3 pos2(-1.f, -1.f, 0.f);
+glm::vec3 pos3(1.f, -1.f, 0.f);
+glm::vec3 pos4(1.f, 1.f, 0.f);
+// texture coords
+glm::vec2 uv1(0.f, 1.f);
+glm::vec2 uv2(0.f, 0.f);
+glm::vec2 uv3(1.f, 0.f);
+glm::vec2 uv4(1.f, 1.f);
+
+GLfloat waterVertices[] = {
+	pos1.x, pos1.y, pos1.z, uv1.x, uv1.y,
+	pos2.x, pos2.y, pos2.z, uv2.x, uv2.y,
+	pos3.x, pos3.y, pos3.z, uv3.x, uv2.y,
+
+	pos1.x, pos1.y, pos1.z, uv1.x, uv1.y,
+	pos3.x, pos3.y, pos3.z, uv3.x, uv3.y,
+	pos4.x, pos4.y, pos4.z, uv4.x, uv4.y};
+
+float poolVertices[] = {
+	// Back face
+	-1.f, -1.f, -1.f, 0.0f, 0.0f, // Bottom-left
+	1.f, 1.f, -1.f, 1.0f, 1.0f,	 // top-right
+	1.f, -1.f, -1.f, 1.0f, 0.0f,	 // bottom-right
+	1.f, 1.f, -1.f, 1.0f, 1.0f,	 // top-right
+	-1.f, -1.f, -1.f, 0.0f, 0.0f, // bottom-left
+	-1.f, 1.f, -1.f, 0.0f, 1.0f,	 // top-left
+	// Front face
+	-1.f, -1.f, 1.f, 0.0f, 0.0f, // bottom-left
+	1.f, -1.f, 1.f, 1.0f, 0.0f,	// bottom-right
+	1.f, 1.f, 1.f, 1.0f, 1.0f,	// top-right
+	1.f, 1.f, 1.f, 1.0f, 1.0f,	// top-right
+	-1.f, 1.f, 1.f, 0.0f, 1.0f,	// top-left
+	-1.f, -1.f, 1.f, 0.0f, 0.0f, // bottom-left
+	// Left face
+	-1.f, 1.f, 1.f, 1.0f, 0.0f,	 // top-right
+	-1.f, 1.f, -1.f, 1.0f, 1.0f,	 // top-left
+	-1.f, -1.f, -1.f, 0.0f, 1.0f, // bottom-left
+	-1.f, -1.f, -1.f, 0.0f, 1.0f, // bottom-left
+	-1.f, -1.f, 1.f, 0.0f, 0.0f,	 // bottom-right
+	-1.f, 1.f, 1.f, 1.0f, 0.0f,	 // top-right
+									 // Right face
+	1.f, 1.f, 1.f, 1.0f, 0.0f,	 // top-left
+	1.f, -1.f, -1.f, 0.0f, 1.0f,	 // bottom-right
+	1.f, 1.f, -1.f, 1.0f, 1.0f,	 // top-right
+	1.f, -1.f, -1.f, 0.0f, 1.0f,	 // bottom-right
+	1.f, 1.f, 1.f, 1.0f, 0.0f,	 // top-left
+	1.f, -1.f, 1.f, 0.0f, 0.0f,	 // bottom-left
+	// Bottom face
+	-1.f, -1.f, -1.f, 0.0f, 1.0f, // top-right
+	1.f, -1.f, -1.f, 1.0f, 1.0f,	 // top-left
+	1.f, -1.f, 1.f, 1.0f, 0.0f,	 // bottom-left
+	1.f, -1.f, 1.f, 1.0f, 0.0f,	 // bottom-left
+	-1.f, -1.f, 1.f, 0.0f, 0.0f,	 // bottom-right
+	-1.f, -1.f, -1.f, 0.0f, 1.0f, // top-right
+	// Top face
+	-1.f, 1.f, -1.f, 0.0f, 1.0f, // top-left
+	1.f, 1.f, 1.f, 1.0f, 0.0f,	// bottom-right
+	1.f, 1.f, -1.f, 1.0f, 1.0f,	// top-right
+	1.f, 1.f, 1.f, 1.0f, 0.0f,	// bottom-right
+	-1.f, 1.f, -1.f, 0.0f, 1.0f, // top-left
+	-1.f, 1.f, 1.f, 0.0f, 0.0f	// bottom-left
+};
+
 struct ForShader
 {
-	glm::vec3 view_position = glm::vec3(0.f, 0.f, -10.f);
+	glm::vec3 view_position = glm::vec3(0.f, -0.5f, -5.f);
 	glm::vec3 light_position = glm::vec3(0.f, 0.f, 2.f);
 	glm::vec3 light_direction = glm::vec3(-1.f, -1.f, -1.f);
 };
@@ -82,61 +153,57 @@ int main()
 	glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
 
 	//...
-	Shader shader = Shader("./resource/object.vert", "./resource/object.frag");
+	Shader waterShader = Shader("./resource/water.vert", "./resource/water.frag");
+	Shader poolShader = Shader("./resource/pool.vert", "./resource/pool.frag");
 
-	// load model
-	Model ourModel("./resource/objects/backpack/backpack.obj");
+	// water
+	VAO waterVAO = VAO();
+	VBO waterVBO = VBO(waterVertices, sizeof(waterVertices));
+	waterVAO.bind();
+	waterVAO.linkVBO(waterVBO, 0, 1);
+	waterVAO.unbind();
+
+	// pool
+	VAO poolVAO = VAO();
+	VBO poolVBO = VBO(poolVertices, sizeof(poolVertices));
+	poolVAO.bind();
+	poolVAO.linkVBO(poolVBO, 0, 1);
+	poolVAO.unbind();
 
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		shader.use();
 
-		// rotate light
-		//  float cosx = glm::cos(glfwGetTime()) * radius;
-		//  float sinz = glm::sin(glfwGetTime()) * radius;
-		//  float siny = glm::sin(glfwGetTime()) * radius;
-		forShader.light_position = glm::vec3(-1.f, 1.f, 5.f);
+		// // rotate light
+		// //  float cosx = glm::cos(glfwGetTime()) * radius;
+		// //  float sinz = glm::sin(glfwGetTime()) * radius;
+		// //  float siny = glm::sin(glfwGetTime()) * radius;
+		// forShader.light_position = glm::vec3(-1.f, 1.f, 5.f);
 
-		glm::mat4 model = glm::mat4(1.f);
-		glm::mat4 view = glm::mat4(1.f);
-		glm::mat4 projection = glm::mat4(1.f);
+		// // Passing uniforms
+		// // view position(camera position)
+		// glUniform3fv(glGetUniformLocation(waterShader.id, "view_pos"), 1, glm::value_ptr(forShader.light_position));
+		// // point light parameters
+		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.direction"), 1, glm::value_ptr(forShader.light_direction));
+		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.position"), 1, glm::value_ptr(forShader.light_position));
+		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.ambient"), 1, glm::value_ptr(glm::vec3(0.2f, 0.2f, 0.2f)));
+		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.diffuse"), 1, glm::value_ptr(glm::vec3(0.8f, 0.8f, 0.8f)));
+		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.specular"), 1, glm::value_ptr(glm::vec3(1.f, 1.f, 1.f)));
+		// glUniform1f(glGetUniformLocation(waterShader.id, "material.shininess"), 6.f);
 
-		model = glm::rotate(model, 0.5f, glm::vec3(0.f, 0.7f, 0.f));
-		view = glm::translate(view, forShader.view_position);
-		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
-		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
-		projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
+		// glUniform1f(glGetUniformLocation(waterShader.id, "light.kc"), 1.f);
+		// glUniform1f(glGetUniformLocation(waterShader.id, "light.kl"), 0.09f);
+		// glUniform1f(glGetUniformLocation(waterShader.id, "light.kq"), 0.032f);
 
-		glm::mat4 transform = projection * view * model;
-
-		// Passing uniforms
-		// view position(camera position)
-		glUniform3fv(glGetUniformLocation(shader.id, "view_pos"), 1, glm::value_ptr(forShader.light_position));
-		// point light parameters
-		glUniform3fv(glGetUniformLocation(shader.id, "light.direction"), 1, glm::value_ptr(forShader.light_direction));
-		glUniform3fv(glGetUniformLocation(shader.id, "light.position"), 1, glm::value_ptr(forShader.light_position));
-		glUniform3fv(glGetUniformLocation(shader.id, "light.ambient"), 1, glm::value_ptr(glm::vec3(0.2f, 0.2f, 0.2f)));
-		glUniform3fv(glGetUniformLocation(shader.id, "light.diffuse"), 1, glm::value_ptr(glm::vec3(0.8f, 0.8f, 0.8f)));
-		glUniform3fv(glGetUniformLocation(shader.id, "light.specular"), 1, glm::value_ptr(glm::vec3(1.f, 1.f, 1.f)));
-		glUniform1f(glGetUniformLocation(shader.id, "material.shininess"), 6.f);
-
-		glUniform1f(glGetUniformLocation(shader.id, "light.kc"), 1.f);
-		glUniform1f(glGetUniformLocation(shader.id, "light.kl"), 0.09f);
-		glUniform1f(glGetUniformLocation(shader.id, "light.kq"), 0.032f);
-		// view matrix
-		glUniformMatrix4fv(glGetUniformLocation(shader.id, "view"), 1, GL_FALSE, glm::value_ptr(view));
-		// model matrix
-		glUniformMatrix4fv(glGetUniformLocation(shader.id, "model"), 1, GL_FALSE, glm::value_ptr(model));
-		// projection matrix
-		glUniformMatrix4fv(glGetUniformLocation(shader.id, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-		// projection * view * model
-		glUniformMatrix4fv(glGetUniformLocation(shader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
-
-		ourModel.draw(shader);
+		glDisable(GL_CULL_FACE);
+		renderWater(waterShader, waterVAO, waterVBO, forShader.view_position);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -163,7 +230,7 @@ void mouse_cursor_callback(GLFWwindow *window, double xpos, double ypos)
 	lastY = SCR_HEIGHT / 2.0;
 	lastX = SCR_WIDTH / 2.0;
 
-	if(!can_rotate)
+	if (!can_rotate)
 		return;
 
 	if (firstMouse)
@@ -178,7 +245,7 @@ void mouse_cursor_callback(GLFWwindow *window, double xpos, double ypos)
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
-	if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 		can_rotate = true;
 	else
 		can_rotate = false;
@@ -199,4 +266,50 @@ float convertAngle(float offset)
 	// SCR_WIDTH = 360 degrees
 	float angle_deg = 360.f * offset / 800.f;
 	return glm::radians(angle_deg);
+}
+
+// function definitions
+void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view_pos)
+{
+	waterShader.use();
+
+	glm::mat4 model = glm::mat4(1.f);
+	glm::mat4 view = glm::mat4(1.f);
+	glm::mat4 projection = glm::mat4(1.f);
+
+	model = glm::translate(model, glm::vec3(0.f, -0.9f, 0.f));
+	model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
+	view = glm::translate(view, view_pos);
+	view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
+	// view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
+	projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
+
+	glm::mat4 transform = projection * view * model;
+	glUniformMatrix4fv(glGetUniformLocation(waterShader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
+
+	waterVAO.bind();
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	waterVAO.unbind();
+}
+
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos)
+{
+	poolShader.use();
+
+	glm::mat4 model = glm::mat4(1.f);
+	glm::mat4 view = glm::mat4(1.f);
+	glm::mat4 projection = glm::mat4(1.f);
+
+	view = glm::translate(view, view_pos);
+	view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
+	// view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
+	// view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
+	projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
+
+	glm::mat4 transform = projection * view * model;
+	glUniformMatrix4fv(glGetUniformLocation(poolShader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
+
+	poolVAO.bind();
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+	poolVAO.unbind();
 }
