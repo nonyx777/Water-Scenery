@@ -1,0 +1,2 @@
+g++ -pthread -o openGL main.cpp glad.c src/VAO.cpp src/VBO.cpp src/Shader.cpp src/Mesh.cpp src/Model.cpp src/stb_image.cpp -lassimp -lglfw -lGL -lXrandr -lXxf86vm -lXi -lXinerama -lX11 -lrt -ldl
+./openGL
