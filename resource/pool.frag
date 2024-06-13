@@ -1,11 +1,15 @@
 #version 330 core
 
+uniform sampler2D diffuseMap;
+uniform sampler2D normalMap;
+
 out vec4 fragColor;
 
 //in vec3 fragPos;
-//in vec2 texCoords;
+in vec2 texCoords;
 
 void main()
 {
-    fragColor = vec4(0.f, 1.f, 0.f, 1.f);
+    vec4 color = texture(diffuseMap, texCoords);
+    fragColor = color;
 }

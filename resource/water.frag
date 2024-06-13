@@ -43,7 +43,7 @@ in vec3 fragPos;
 void main()
 {
     //fragColor = vec4(lightModelCalc() * pointLight(), 1.f);
-    fragColor = vec4(1.f, 0.3f, 1.f, 1.f);
+    fragColor = vec4(0.f, 0.f, 1.f, 1.f);
 }
 
 //function definition

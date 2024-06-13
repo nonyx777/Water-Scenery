@@ -16,6 +16,7 @@ void mouse_cursor_callback(GLFWwindow *window, double xpos, double ypos);
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
 float clamp(double min, double max, double value);
 float convertAngle(float offset);
+unsigned int loadTexture(char const *path);
 
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
@@ -29,7 +30,7 @@ bool can_rotate = false;
 
 // function declerations
 void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view_pos);
-void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos);
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, uint poolDiffuseMap, uint poolNormalMap);
 
 // positions
 glm::vec3 pos1(-1.f, 1.f, 0.f);
@@ -54,46 +55,39 @@ GLfloat waterVertices[] = {
 float poolVertices[] = {
 	// Back face
 	-1.f, -1.f, -1.f, 0.0f, 0.0f, // Bottom-left
-	1.f, 1.f, -1.f, 1.0f, 1.0f,	 // top-right
-	1.f, -1.f, -1.f, 1.0f, 0.0f,	 // bottom-right
-	1.f, 1.f, -1.f, 1.0f, 1.0f,	 // top-right
+	1.f, 1.f, -1.f, 1.0f, 1.0f,	  // top-right
+	1.f, -1.f, -1.f, 1.0f, 0.0f,  // bottom-right
+	1.f, 1.f, -1.f, 1.0f, 1.0f,	  // top-right
 	-1.f, -1.f, -1.f, 0.0f, 0.0f, // bottom-left
-	-1.f, 1.f, -1.f, 0.0f, 1.0f,	 // top-left
+	-1.f, 1.f, -1.f, 0.0f, 1.0f,  // top-left
 	// Front face
 	-1.f, -1.f, 1.f, 0.0f, 0.0f, // bottom-left
-	1.f, -1.f, 1.f, 1.0f, 0.0f,	// bottom-right
-	1.f, 1.f, 1.f, 1.0f, 1.0f,	// top-right
-	1.f, 1.f, 1.f, 1.0f, 1.0f,	// top-right
-	-1.f, 1.f, 1.f, 0.0f, 1.0f,	// top-left
+	1.f, -1.f, 1.f, 1.0f, 0.0f,	 // bottom-right
+	1.f, 1.f, 1.f, 1.0f, 1.0f,	 // top-right
+	1.f, 1.f, 1.f, 1.0f, 1.0f,	 // top-right
+	-1.f, 1.f, 1.f, 0.0f, 1.0f,	 // top-left
 	-1.f, -1.f, 1.f, 0.0f, 0.0f, // bottom-left
 	// Left face
-	-1.f, 1.f, 1.f, 1.0f, 0.0f,	 // top-right
-	-1.f, 1.f, -1.f, 1.0f, 1.0f,	 // top-left
+	-1.f, 1.f, 1.f, 1.0f, 0.0f,	  // top-right
+	-1.f, 1.f, -1.f, 1.0f, 1.0f,  // top-left
 	-1.f, -1.f, -1.f, 0.0f, 1.0f, // bottom-left
 	-1.f, -1.f, -1.f, 0.0f, 1.0f, // bottom-left
-	-1.f, -1.f, 1.f, 0.0f, 0.0f,	 // bottom-right
-	-1.f, 1.f, 1.f, 1.0f, 0.0f,	 // top-right
-									 // Right face
-	1.f, 1.f, 1.f, 1.0f, 0.0f,	 // top-left
-	1.f, -1.f, -1.f, 0.0f, 1.0f,	 // bottom-right
-	1.f, 1.f, -1.f, 1.0f, 1.0f,	 // top-right
-	1.f, -1.f, -1.f, 0.0f, 1.0f,	 // bottom-right
-	1.f, 1.f, 1.f, 1.0f, 0.0f,	 // top-left
-	1.f, -1.f, 1.f, 0.0f, 0.0f,	 // bottom-left
+	-1.f, -1.f, 1.f, 0.0f, 0.0f,  // bottom-right
+	-1.f, 1.f, 1.f, 1.0f, 0.0f,	  // top-right
+								  // Right face
+	1.f, 1.f, 1.f, 1.0f, 0.0f,	  // top-left
+	1.f, -1.f, -1.f, 0.0f, 1.0f,  // bottom-right
+	1.f, 1.f, -1.f, 1.0f, 1.0f,	  // top-right
+	1.f, -1.f, -1.f, 0.0f, 1.0f,  // bottom-right
+	1.f, 1.f, 1.f, 1.0f, 0.0f,	  // top-left
+	1.f, -1.f, 1.f, 0.0f, 0.0f,	  // bottom-left
 	// Bottom face
 	-1.f, -1.f, -1.f, 0.0f, 1.0f, // top-right
-	1.f, -1.f, -1.f, 1.0f, 1.0f,	 // top-left
-	1.f, -1.f, 1.f, 1.0f, 0.0f,	 // bottom-left
-	1.f, -1.f, 1.f, 1.0f, 0.0f,	 // bottom-left
-	-1.f, -1.f, 1.f, 0.0f, 0.0f,	 // bottom-right
-	-1.f, -1.f, -1.f, 0.0f, 1.0f, // top-right
-	// Top face
-	-1.f, 1.f, -1.f, 0.0f, 1.0f, // top-left
-	1.f, 1.f, 1.f, 1.0f, 0.0f,	// bottom-right
-	1.f, 1.f, -1.f, 1.0f, 1.0f,	// top-right
-	1.f, 1.f, 1.f, 1.0f, 0.0f,	// bottom-right
-	-1.f, 1.f, -1.f, 0.0f, 1.0f, // top-left
-	-1.f, 1.f, 1.f, 0.0f, 0.0f	// bottom-left
+	1.f, -1.f, -1.f, 1.0f, 1.0f,  // top-left
+	1.f, -1.f, 1.f, 1.0f, 0.0f,	  // bottom-left
+	1.f, -1.f, 1.f, 1.0f, 0.0f,	  // bottom-left
+	-1.f, -1.f, 1.f, 0.0f, 0.0f,  // bottom-right
+	-1.f, -1.f, -1.f, 0.0f, 1.0f // top-right
 };
 
 struct ForShader
@@ -135,7 +129,7 @@ int main()
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetCursorPosCallback(window, mouse_cursor_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	// glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -173,6 +167,14 @@ int main()
 	poolVAO.linkVBO(poolVBO, 0, 1);
 	poolVAO.unbind();
 
+	// textures
+	unsigned int poolDiffuseMap = loadTexture("./resource/textures/marble_tiles_diff_2k.jpg");
+	unsigned int poolNormalMap = loadTexture("./resource/textures/marble_tiles_nor_gl_2k.jpg");
+
+	poolShader.use();
+	glUniform1f(glGetUniformLocation(poolShader.id, "diffuseMap"), 0);
+	glUniform1f(glGetUniformLocation(poolShader.id, "normalMap"), 1);
+
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
@@ -203,7 +205,7 @@ int main()
 		renderWater(waterShader, waterVAO, waterVBO, forShader.view_position);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
-		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, poolDiffuseMap, poolNormalMap);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -292,7 +294,7 @@ void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view
 	waterVAO.unbind();
 }
 
-void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos)
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, uint poolDiffuseMap, uint poolNormalMap)
 {
 	poolShader.use();
 
@@ -310,6 +312,49 @@ void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos
 	glUniformMatrix4fv(glGetUniformLocation(poolShader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
 
 	poolVAO.bind();
-	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, poolDiffuseMap);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, poolNormalMap);
+
+
+	glDrawArrays(GL_TRIANGLES, 0, 30);
 	poolVAO.unbind();
+}
+
+unsigned int loadTexture(char const *path)
+{
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+
+	int width, height, nrComponents;
+	unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+	if (data)
+	{
+		GLenum format;
+		if (nrComponents == 1)
+			format = GL_RED;
+		else if (nrComponents == 3)
+			format = GL_RGB;
+		else if (nrComponents == 4)
+			format = GL_RGBA;
+
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+	}
+	else
+	{
+		std::cout << "Texture failed to load at path: " << path << std::endl;
+		stbi_image_free(data);
+	}
+
+	return textureID;
 }
