@@ -30,7 +30,7 @@ bool can_rotate = false;
 
 // function declerations
 void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view_pos);
-void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, uint poolDiffuseMap, uint poolNormalMap);
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, glm::vec3 light_dir ,uint poolDiffuseMap, uint poolNormalMap);
 
 // positions
 glm::vec3 pos1(-1.f, 1.f, 0.f);
@@ -87,14 +87,14 @@ float poolVertices[] = {
 	1.f, -1.f, 1.f, 1.0f, 0.0f,	  // bottom-left
 	1.f, -1.f, 1.f, 1.0f, 0.0f,	  // bottom-left
 	-1.f, -1.f, 1.f, 0.0f, 0.0f,  // bottom-right
-	-1.f, -1.f, -1.f, 0.0f, 1.0f // top-right
+	-1.f, -1.f, -1.f, 0.0f, 1.0f  // top-right
 };
 
 struct ForShader
 {
 	glm::vec3 view_position = glm::vec3(0.f, -0.5f, -5.f);
 	glm::vec3 light_position = glm::vec3(0.f, 0.f, 2.f);
-	glm::vec3 light_direction = glm::vec3(-1.f, -1.f, -1.f);
+	glm::vec3 light_direction = glm::vec3(0.f, 2.f, 3.f);
 };
 
 const float radius = 10.f;
@@ -168,8 +168,8 @@ int main()
 	poolVAO.unbind();
 
 	// textures
-	unsigned int poolDiffuseMap = loadTexture("./resource/textures/marble_tiles_diff_2k.jpg");
-	unsigned int poolNormalMap = loadTexture("./resource/textures/marble_tiles_nor_gl_2k.jpg");
+	unsigned int poolDiffuseMap = loadTexture("./resource/textures/painted_plaster_wall_diff_2k.jpg");
+	unsigned int poolNormalMap = loadTexture("./resource/textures/painted_plaster_wall_nor_gl_2k.jpg");
 
 	poolShader.use();
 	glUniform1f(glGetUniformLocation(poolShader.id, "diffuseMap"), 0);
@@ -205,7 +205,7 @@ int main()
 		renderWater(waterShader, waterVAO, waterVBO, forShader.view_position);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
-		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, poolDiffuseMap, poolNormalMap);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, forShader.light_direction ,poolDiffuseMap, poolNormalMap);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -294,10 +294,11 @@ void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view
 	waterVAO.unbind();
 }
 
-void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, uint poolDiffuseMap, uint poolNormalMap)
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, glm::vec3 light_dir, uint poolDiffuseMap, uint poolNormalMap)
 {
 	poolShader.use();
 
+	// transormation
 	glm::mat4 model = glm::mat4(1.f);
 	glm::mat4 view = glm::mat4(1.f);
 	glm::mat4 projection = glm::mat4(1.f);
@@ -309,14 +310,24 @@ void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos
 	projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 	glm::mat4 transform = projection * view * model;
+	glUniformMatrix4fv(glGetUniformLocation(poolShader.id, "model"), 1, GL_FALSE, glm::value_ptr(model));
 	glUniformMatrix4fv(glGetUniformLocation(poolShader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
+
+	// light
+	glUniform3fv(glGetUniformLocation(poolShader.id, "light.direction"), 1, glm::value_ptr(light_dir));
+	glUniform3fv(glGetUniformLocation(poolShader.id, "light.ambient"), 1, glm::value_ptr(glm::vec3(0.2f, 0.2f, 0.2f)));
+	glUniform3fv(glGetUniformLocation(poolShader.id, "light.diffuse"), 1, glm::value_ptr(glm::vec3(0.8f, 0.8f, 0.8f)));
+	glUniform3fv(glGetUniformLocation(poolShader.id, "light.specular"), 1, glm::value_ptr(glm::vec3(1.f, 1.f, 1.f)));
+	glUniform1f(glGetUniformLocation(poolShader.id, "material.shininess"), 6.f);
+
+	//camera
+	glUniform3fv(glGetUniformLocation(poolShader.id, "viewPos"), 1, glm::value_ptr(view_pos));
 
 	poolVAO.bind();
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, poolDiffuseMap);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, poolNormalMap);
-
 
 	glDrawArrays(GL_TRIANGLES, 0, 30);
 	poolVAO.unbind();
