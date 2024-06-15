@@ -30,7 +30,9 @@ bool can_rotate = false;
 
 // function declerations
 void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view_pos);
-void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, glm::vec3 light_dir ,uint poolDiffuseMap, uint poolNormalMap);
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, glm::vec3 light_dir, uint poolDiffuseMap, uint poolNormalMap);
+void setupReflectionBuffer(uint &reflectionFramebuffer, uint &reflectionColorbuffer, uint &reflectionRenderbuffer);
+void setupRefractionBuffer(uint &refractionFramebuffer, uint &refractionColorbuffer, uint &refractionRenderbuffer);
 
 // positions
 glm::vec3 pos1(-1.f, 1.f, 0.f);
@@ -98,6 +100,9 @@ struct ForShader
 };
 
 const float radius = 10.f;
+
+unsigned int reflectionFramebuffer, reflectionColorbuffer, reflectionRenderbuffer;
+unsigned int refractionFramebuffer, refractionColorbuffer, refractionRenderbuffer;
 
 int main()
 {
@@ -171,45 +176,61 @@ int main()
 	unsigned int poolDiffuseMap = loadTexture("./resource/textures/painted_plaster_wall_diff_2k.jpg");
 	unsigned int poolNormalMap = loadTexture("./resource/textures/painted_plaster_wall_nor_gl_2k.jpg");
 
-	poolShader.use();
-	glUniform1f(glGetUniformLocation(poolShader.id, "diffuseMap"), 0);
-	glUniform1f(glGetUniformLocation(poolShader.id, "normalMap"), 1);
+	// framebuffers
+	setupReflectionBuffer(reflectionFramebuffer, reflectionColorbuffer, reflectionRenderbuffer);
+	setupRefractionBuffer(refractionFramebuffer, refractionColorbuffer, refractionRenderbuffer);
 
 	while (!glfwWindowShouldClose(window))
 	{
 		processInput(window);
+
+		// reflection framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffer);
+		glEnable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// // rotate light
-		// //  float cosx = glm::cos(glfwGetTime()) * radius;
-		// //  float sinz = glm::sin(glfwGetTime()) * radius;
-		// //  float siny = glm::sin(glfwGetTime()) * radius;
-		// forShader.light_position = glm::vec3(-1.f, 1.f, 5.f);
-
-		// // Passing uniforms
-		// // view position(camera position)
-		// glUniform3fv(glGetUniformLocation(waterShader.id, "view_pos"), 1, glm::value_ptr(forShader.light_position));
-		// // point light parameters
-		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.direction"), 1, glm::value_ptr(forShader.light_direction));
-		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.position"), 1, glm::value_ptr(forShader.light_position));
-		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.ambient"), 1, glm::value_ptr(glm::vec3(0.2f, 0.2f, 0.2f)));
-		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.diffuse"), 1, glm::value_ptr(glm::vec3(0.8f, 0.8f, 0.8f)));
-		// glUniform3fv(glGetUniformLocation(waterShader.id, "light.specular"), 1, glm::value_ptr(glm::vec3(1.f, 1.f, 1.f)));
-		// glUniform1f(glGetUniformLocation(waterShader.id, "material.shininess"), 6.f);
-
-		// glUniform1f(glGetUniformLocation(waterShader.id, "light.kc"), 1.f);
-		// glUniform1f(glGetUniformLocation(waterShader.id, "light.kl"), 0.09f);
-		// glUniform1f(glGetUniformLocation(waterShader.id, "light.kq"), 0.032f);
 
 		glDisable(GL_CULL_FACE);
 		renderWater(waterShader, waterVAO, waterVBO, forShader.view_position);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
-		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, forShader.light_direction ,poolDiffuseMap, poolNormalMap);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, forShader.light_direction, poolDiffuseMap, poolNormalMap);
+
+		// refraction framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, refractionFramebuffer);
+		glEnable(GL_DEPTH_TEST);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glDisable(GL_CULL_FACE);
+		renderWater(waterShader, waterVAO, waterVBO, forShader.view_position);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, forShader.light_direction, poolDiffuseMap, poolNormalMap);
+
+		// default framebuffer
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glEnable(GL_DEPTH_TEST);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glDisable(GL_CULL_FACE);
+		renderWater(waterShader, waterVAO, waterVBO, forShader.view_position);
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, forShader.light_direction, poolDiffuseMap, poolNormalMap);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+
+	poolShader.Delete();
+	waterShader.Delete();
+	waterVAO.Delete();
+	waterVBO.Delete();
+	poolVAO.Delete();
+	poolVBO.Delete();
+	glDeleteBuffers(1, &reflectionFramebuffer);
+	glDeleteBuffers(1, &reflectionColorbuffer);
+	glDeleteBuffers(1, &reflectionRenderbuffer);
+	glDeleteBuffers(1, &refractionFramebuffer);
+	glDeleteBuffers(1, &refractionColorbuffer);
+	glDeleteBuffers(1, &refractionRenderbuffer);
 
 	return 0;
 }
@@ -283,13 +304,17 @@ void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view
 	model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
 	view = glm::translate(view, view_pos);
 	view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-	// view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
+	view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
 	projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 	glm::mat4 transform = projection * view * model;
 	glUniformMatrix4fv(glGetUniformLocation(waterShader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
 
 	waterVAO.bind();
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, reflectionColorbuffer);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, refractionColorbuffer);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	waterVAO.unbind();
 }
@@ -305,8 +330,8 @@ void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos
 
 	view = glm::translate(view, view_pos);
 	view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-	// view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
-	// view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
+	//// view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
+	//// view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
 	projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 	glm::mat4 transform = projection * view * model;
@@ -320,7 +345,7 @@ void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos
 	glUniform3fv(glGetUniformLocation(poolShader.id, "light.specular"), 1, glm::value_ptr(glm::vec3(1.f, 1.f, 1.f)));
 	glUniform1f(glGetUniformLocation(poolShader.id, "material.shininess"), 6.f);
 
-	//camera
+	// camera
 	glUniform3fv(glGetUniformLocation(poolShader.id, "viewPos"), 1, glm::value_ptr(view_pos));
 
 	poolVAO.bind();
@@ -368,4 +393,52 @@ unsigned int loadTexture(char const *path)
 	}
 
 	return textureID;
+}
+
+void setupReflectionBuffer(uint &reflectionFramebuffer, uint &reflectionColorbuffer, uint &reflectionRenderbuffer)
+{
+	// framebuffer
+	glGenFramebuffers(1, &reflectionFramebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffer);
+	// generate and attach a color texture buffer to framebuffer
+	glGenTextures(1, &reflectionColorbuffer);
+	glBindTexture(GL_TEXTURE_2D, reflectionColorbuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, reflectionColorbuffer, 0);
+	// generate and attach a renderbuffer to the framebuffer
+	glGenRenderbuffers(1, &reflectionRenderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, reflectionRenderbuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, reflectionRenderbuffer);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete" << std::endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void setupRefractionBuffer(uint &refractionFramebuffer, uint &refractionColorbuffer, uint &refractionRenderbuffer)
+{
+	// framebuffer
+	glGenFramebuffers(1, &refractionFramebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, refractionFramebuffer);
+	// generate and attach a color texture buffer to framebuffer
+	glGenTextures(1, &refractionColorbuffer);
+	glBindTexture(GL_TEXTURE_2D, refractionColorbuffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, refractionColorbuffer, 0);
+	// generate and attach a renderbuffer to the framebuffer
+	glGenRenderbuffers(1, &refractionRenderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, refractionRenderbuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, refractionRenderbuffer);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete" << std::endl;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
