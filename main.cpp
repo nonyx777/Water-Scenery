@@ -29,9 +29,9 @@ const float sensetivity_y = 5.f;
 bool can_rotate = false;
 
 // function declerations
-void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view_pos, glm::vec4 clip_plane);
-void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec3 view_pos, glm::vec4 clip_plane);
-void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, glm::vec3 light_dir, uint poolDiffuseMap, uint poolNormalMap, glm::vec4 clip_plane);
+void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection);
+void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection);
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 light_dir, uint poolDiffuseMap, uint poolNormalMap, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection, glm::vec3 view_pos);
 void setupReflectionBuffer(uint &reflectionFramebuffer, uint &reflectionColorbuffer, uint &reflectionRenderbuffer);
 void setupRefractionBuffer(uint &refractionFramebuffer, uint &refractionColorbuffer, uint &refractionRenderbuffer);
 
@@ -107,6 +107,7 @@ unsigned int refractionFramebuffer, refractionColorbuffer, refractionRenderbuffe
 glm::vec4 refractionClippingPlane = glm::vec4(0.f, -1.f, 0.f, -0.92f);
 glm::vec4 reflectionClippingPlane = glm::vec4(0.f, 1.f, 0.f, 0.8f);
 glm::vec4 noClippingPlane = glm::vec4(0.f, -1.f, 0.f, 10000.f);
+bool refelcting = true;
 
 int main()
 {
@@ -201,6 +202,15 @@ int main()
 	{
 		processInput(window);
 
+		glm::mat4 view = glm::mat4(1.f);
+		glm::mat4 projection = glm::mat4(1.f);
+
+		view = glm::translate(view, forShader.view_position);
+		view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
+		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
+		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
+		projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
+
 		// reflection framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffer);
 		glEnable(GL_DEPTH_TEST);
@@ -208,10 +218,10 @@ int main()
 		glClearColor(0.2f, 0.3f, 1.f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDisable(GL_CULL_FACE);
-		renderGround(groundShader, groundVAO, groundVBO, forShader.view_position, reflectionClippingPlane);
+		renderGround(groundShader, groundVAO, groundVBO, reflectionClippingPlane, view, projection);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
-		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, forShader.light_direction, poolDiffuseMap, poolNormalMap, reflectionClippingPlane);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.light_direction, poolDiffuseMap, poolNormalMap, reflectionClippingPlane, view, projection, forShader.view_position);
 
 		// refraction framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, refractionFramebuffer);
@@ -220,10 +230,10 @@ int main()
 		glClearColor(0.2f, 0.3f, 1.f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDisable(GL_CULL_FACE);
-		renderGround(groundShader, groundVAO, groundVBO, forShader.view_position, refractionClippingPlane);
+		renderGround(groundShader, groundVAO, groundVBO, refractionClippingPlane, view, projection);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
-		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, forShader.light_direction, poolDiffuseMap, poolNormalMap, refractionClippingPlane);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.light_direction, poolDiffuseMap, poolNormalMap, refractionClippingPlane, view, projection, forShader.view_position);
 
 		// default framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -232,11 +242,11 @@ int main()
 		glClearColor(0.2f, 0.3f, 1.f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDisable(GL_CULL_FACE);
-		renderWater(waterShader, waterVAO, waterVBO, forShader.view_position, noClippingPlane);
-		renderGround(groundShader, groundVAO, groundVBO, forShader.view_position, noClippingPlane);
+		renderWater(waterShader, waterVAO, waterVBO, noClippingPlane, view, projection);
+		renderGround(groundShader, groundVAO, groundVBO, noClippingPlane, view, projection);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
-		renderPool(poolShader, poolVAO, poolVBO, forShader.view_position, forShader.light_direction, poolDiffuseMap, poolNormalMap, noClippingPlane);
+		renderPool(poolShader, poolVAO, poolVBO, forShader.light_direction, poolDiffuseMap, poolNormalMap, noClippingPlane, view, projection, forShader.view_position);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -318,21 +328,14 @@ float convertAngle(float offset)
 }
 
 // function definitions
-void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view_pos, glm::vec4 clip_plane)
+void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection)
 {
 	waterShader.use();
 
 	glm::mat4 model = glm::mat4(1.f);
-	glm::mat4 view = glm::mat4(1.f);
-	glm::mat4 projection = glm::mat4(1.f);
 
 	model = glm::translate(model, glm::vec3(0.f, -0.9f, 0.f));
 	model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
-	view = glm::translate(view, view_pos);
-	view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-	// view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
-	view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
-	projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 	glm::mat4 transform = projection * view * model;
 	glUniformMatrix4fv(glGetUniformLocation(waterShader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
@@ -348,21 +351,14 @@ void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view
 	waterVAO.unbind();
 }
 
-void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec3 view_pos, glm::vec4 clip_plane)
+void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection)
 {
 	groundShader.use();
 
 	glm::mat4 model = glm::mat4(1.f);
-	glm::mat4 view = glm::mat4(1.f);
-	glm::mat4 projection = glm::mat4(1.f);
 
 	model = glm::translate(model, glm::vec3(0.f, -0.95f, 0.f));
 	model = glm::rotate(model, glm::radians(90.f), glm::vec3(1.f, 0.f, 0.f));
-	view = glm::translate(view, view_pos);
-	view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-	// view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
-	view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
-	projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 	glm::mat4 transform = projection * view * model;
 	glUniformMatrix4fv(glGetUniformLocation(groundShader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
@@ -374,20 +370,12 @@ void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec3 
 	groundVAO.unbind();
 }
 
-void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 view_pos, glm::vec3 light_dir, uint poolDiffuseMap, uint poolNormalMap, glm::vec4 clip_plane)
+void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 light_dir, uint poolDiffuseMap, uint poolNormalMap, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection, glm::vec3 view_pos)
 {
 	poolShader.use();
 
 	// transormation
 	glm::mat4 model = glm::mat4(1.f);
-	glm::mat4 view = glm::mat4(1.f);
-	glm::mat4 projection = glm::mat4(1.f);
-
-	view = glm::translate(view, view_pos);
-	view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-	// view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
-	view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
-	projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 	glm::mat4 transform = projection * view * model;
 	glUniformMatrix4fv(glGetUniformLocation(poolShader.id, "model"), 1, GL_FALSE, glm::value_ptr(model));
