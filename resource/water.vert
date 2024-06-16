@@ -7,10 +7,15 @@ out vec3 fragPos;
 out vec2 texCoords;
 
 uniform mat4 transform;
+uniform mat4 model;
+
+uniform vec4 clipPlane;
 
 void main()
 {
     texCoords = aTexCoords;
     fragPos = aPos;
+    vec4 position = model * vec4(aPos, 1.f);
+    gl_ClipDistance[0] = dot(position, clipPlane);
     gl_Position = transform * vec4(aPos, 1.f);
 }
