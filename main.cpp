@@ -97,7 +97,7 @@ struct ForShader
 {
 	glm::vec3 view_position = glm::vec3(0.f, 0, -5.f);
 	glm::vec3 light_position = glm::vec3(0.f, 0.f, 2.f);
-	glm::vec3 light_direction = glm::vec3(0.f, 2.f, 3.f);
+	glm::vec3 light_direction = glm::vec3(0.f, -1.f, -1.f);
 };
 
 const float radius = 10.f;
@@ -187,8 +187,8 @@ int main()
 	groundVAO.unbind();
 
 	// textures
-	unsigned int poolDiffuseMap = loadTexture("./resource/textures/painted_plaster_wall_diff_2k.jpg");
-	unsigned int poolNormalMap = loadTexture("./resource/textures/painted_plaster_wall_nor_gl_2k.jpg");
+	unsigned int poolDiffuseMap = loadTexture("./resource/textures/red_bricks_04_diff_4k.jpg");
+	unsigned int poolNormalMap = loadTexture("./resource/textures/red_bricks_04_nor_gl_4k.jpg");
 
 	// framebuffers
 	setupReflectionBuffer(reflectionFramebuffer, reflectionColorbuffer, reflectionRenderbuffer);
@@ -207,11 +207,15 @@ int main()
 
 		view = glm::translate(view, forShader.view_position);
 		view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
+		// view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
 		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
 		projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 		// reflection framebuffer
+		float distance = 2 * (forShader.view_position.y - (-0.9f));
+		view = glm::translate(view, glm::vec3(0.f, distance, 0.f));
+		view = glm::rotate(view, glm::radians(-10.f), glm::vec3(1.f, 0.f, 0.f));
+
 		glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffer);
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CLIP_DISTANCE0);
@@ -222,6 +226,9 @@ int main()
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
 		renderPool(poolShader, poolVAO, poolVBO, forShader.light_direction, poolDiffuseMap, poolNormalMap, reflectionClippingPlane, view, projection, forShader.view_position);
+
+		view = glm::translate(view, glm::vec3(0.f, -distance, 0.f));
+		view = glm::rotate(view, glm::radians(10.f), glm::vec3(1.f, 0.f, 0.f));
 
 		// refraction framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, refractionFramebuffer);
