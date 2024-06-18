@@ -18,8 +18,8 @@ float clamp(double min, double max, double value);
 float convertAngle(float offset);
 unsigned int loadTexture(char const *path);
 
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 800;
+const unsigned int SCR_WIDTH = 700;
+const unsigned int SCR_HEIGHT = 700;
 double lastX, lastY;
 bool firstMouse = true;
 float angle_x{0.f};
@@ -108,6 +108,7 @@ glm::vec4 refractionClippingPlane = glm::vec4(0.f, -1.f, 0.f, -0.92f);
 glm::vec4 reflectionClippingPlane = glm::vec4(0.f, 1.f, 0.f, 0.8f);
 glm::vec4 noClippingPlane = glm::vec4(0.f, -1.f, 0.f, 10000.f);
 bool refelcting = true;
+glm::vec3 transformedViewPos;
 
 int main()
 {
@@ -206,15 +207,20 @@ int main()
 		glm::mat4 projection = glm::mat4(1.f);
 
 		view = glm::translate(view, forShader.view_position);
-		view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 1.f));
+		// view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
+		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
 		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
 		projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 		// reflection framebuffer
-		float distance = 2 * (forShader.view_position.y - (-0.9f));
+		float distance = 2 * (forShader.view_position.y + 0.7f);
+		view = glm::mat4(1.f);
+		view = glm::translate(view, forShader.view_position);
 		view = glm::translate(view, glm::vec3(0.f, distance, 0.f));
+		// view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
 		view = glm::rotate(view, glm::radians(-10.f), glm::vec3(1.f, 0.f, 0.f));
+		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
+		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
 
 		glBindFramebuffer(GL_FRAMEBUFFER, reflectionFramebuffer);
 		glEnable(GL_DEPTH_TEST);
@@ -229,6 +235,16 @@ int main()
 
 		view = glm::translate(view, glm::vec3(0.f, -distance, 0.f));
 		view = glm::rotate(view, glm::radians(10.f), glm::vec3(1.f, 0.f, 0.f));
+
+		// ####################################################################################
+
+		view = glm::mat4(1.f);
+		view = glm::translate(view, forShader.view_position);
+		// view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
+		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
+		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
+
+		transformedViewPos = glm::vec3(view * glm::vec4(forShader.view_position, 1.f));
 
 		// refraction framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, refractionFramebuffer);
@@ -249,7 +265,7 @@ int main()
 		glClearColor(0.2f, 0.3f, 1.f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDisable(GL_CULL_FACE);
-		renderWater(waterShader, waterVAO, waterVBO, forShader.view_position, noClippingPlane, view, projection);
+		renderWater(waterShader, waterVAO, waterVBO, transformedViewPos, noClippingPlane, view, projection);
 		renderGround(groundShader, groundVAO, groundVBO, noClippingPlane, view, projection);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
@@ -348,7 +364,7 @@ void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view
 	glUniformMatrix4fv(glGetUniformLocation(waterShader.id, "transform"), 1, GL_FALSE, glm::value_ptr(transform));
 	glUniformMatrix4fv(glGetUniformLocation(waterShader.id, "model"), 1, GL_FALSE, glm::value_ptr(model));
 	glUniform4fv(glGetUniformLocation(waterShader.id, "clipPlane"), 1, glm::value_ptr(clip_plane));
-	glUniform4fv(glGetUniformLocation(waterShader.id, "viewPos"), 1, glm::value_ptr(viewPos));
+	glUniform3fv(glGetUniformLocation(waterShader.id, "viewPos"), 1, glm::value_ptr(viewPos));
 
 	waterVAO.bind();
 	glActiveTexture(GL_TEXTURE0);

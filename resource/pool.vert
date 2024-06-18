@@ -15,10 +15,11 @@ uniform vec4 clipPlane;
 void main()
 {
     texCoords = aTexCoords;
-    fragPos = aPos;
+    fragPos = vec3(model * vec4(aPos, 1.f));
     model_normal = model;
 
     vec4 position = model * vec4(aPos, 1.f);
     gl_ClipDistance[0] = dot(position, clipPlane);
+    
     gl_Position = transform * vec4(aPos, 1.f);
 }
