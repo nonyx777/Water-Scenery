@@ -34,9 +34,10 @@ vec3 directionalLight();
 
 void main()
 {
-    fragNormal = texture(normalMap, texCoords).rgb;
-    fragNormal = normalize(fragNormal * 2.f - 1.f);
-    fragNormal = mat3(model_normal) * fragNormal;
+    //fragNormal = texture(normalMap, texCoords).rgb;
+    //fragNormal = normalize(fragNormal * 2.f - 1.f);
+    //fragNormal = mat3(model_normal) * fragNormal;
+    fragNormal = vec3(0.f, 0.f, 1.f);
 
     fragColor = vec4(directionalLight(), 1.f);
 }

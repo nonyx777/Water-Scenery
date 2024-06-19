@@ -30,7 +30,7 @@ bool can_rotate = false;
 
 // function declerations
 void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 viewPos, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection);
-void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection);
+void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection, uint diffuseMap, uint normalMap);
 void renderPool(Shader &poolShader, VAO poolVAO, VBO poolVBO, glm::vec3 light_dir, uint poolDiffuseMap, uint poolNormalMap, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection, glm::vec3 view_pos);
 void setupReflectionBuffer(uint &reflectionFramebuffer, uint &reflectionColorbuffer, uint &reflectionRenderbuffer);
 void setupRefractionBuffer(uint &refractionFramebuffer, uint &refractionColorbuffer, uint &refractionRenderbuffer);
@@ -97,7 +97,7 @@ struct ForShader
 {
 	glm::vec3 view_position = glm::vec3(0.f, 0, -5.f);
 	glm::vec3 light_position = glm::vec3(0.f, 0.f, 2.f);
-	glm::vec3 light_direction = glm::vec3(0.f, -1.f, -1.f);
+	glm::vec3 light_direction = glm::vec3(0.f, 1.f, 1.f);
 };
 
 const float radius = 10.f;
@@ -188,8 +188,10 @@ int main()
 	groundVAO.unbind();
 
 	// textures
-	unsigned int poolDiffuseMap = loadTexture("./resource/textures/red_bricks_04_diff_4k.jpg");
-	unsigned int poolNormalMap = loadTexture("./resource/textures/red_bricks_04_nor_gl_4k.jpg");
+	unsigned int poolDiffuseMap = loadTexture("./resource/textures/marble_tiles_diff_2k.jpg");
+	unsigned int poolNormalMap = loadTexture("./resource/textures/marble_tiles_nor_gl_2k.jpg");
+	unsigned int groundDiffuseMap = loadTexture("resource/textures/painted_plaster_wall_diff_2k.jpg");
+	unsigned int groundNormalMap = loadTexture("./resource/textures/painted_plaster_wall_nor_gl_2k.jpg");
 
 	// framebuffers
 	setupReflectionBuffer(reflectionFramebuffer, reflectionColorbuffer, reflectionRenderbuffer);
@@ -198,6 +200,10 @@ int main()
 	waterShader.use();
 	glUniform1i(glGetUniformLocation(waterShader.id, "reflectionTexture"), 0);
 	glUniform1i(glGetUniformLocation(waterShader.id, "refractionTexture"), 1);
+
+	groundShader.use();
+	glUniform1i(glGetUniformLocation(groundShader.id, "diffuseTexture"), 0);
+	glUniform1i(glGetUniformLocation(groundShader.id, "normalTexture"), 1);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -223,7 +229,7 @@ int main()
 		glClearColor(0.2f, 0.3f, 1.f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDisable(GL_CULL_FACE);
-		renderGround(groundShader, groundVAO, groundVBO, reflectionClippingPlane, view, projection);
+		renderGround(groundShader, groundVAO, groundVBO, reflectionClippingPlane, view, projection, groundDiffuseMap, groundNormalMap);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
 		renderPool(poolShader, poolVAO, poolVBO, forShader.light_direction, poolDiffuseMap, poolNormalMap, reflectionClippingPlane, view, projection, forShader.view_position);
@@ -247,7 +253,7 @@ int main()
 		glClearColor(0.2f, 0.3f, 1.f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDisable(GL_CULL_FACE);
-		renderGround(groundShader, groundVAO, groundVBO, refractionClippingPlane, view, projection);
+		renderGround(groundShader, groundVAO, groundVBO, refractionClippingPlane, view, projection, groundDiffuseMap, groundNormalMap);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
 		renderPool(poolShader, poolVAO, poolVBO, forShader.light_direction, poolDiffuseMap, poolNormalMap, refractionClippingPlane, view, projection, forShader.view_position);
@@ -260,7 +266,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glDisable(GL_CULL_FACE);
 		renderWater(waterShader, waterVAO, waterVBO, transformedViewPos, noClippingPlane, view, projection);
-		renderGround(groundShader, groundVAO, groundVBO, noClippingPlane, view, projection);
+		renderGround(groundShader, groundVAO, groundVBO, noClippingPlane, view, projection, groundDiffuseMap, groundNormalMap);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
 		renderPool(poolShader, poolVAO, poolVBO, forShader.light_direction, poolDiffuseMap, poolNormalMap, noClippingPlane, view, projection, forShader.view_position);
@@ -369,7 +375,7 @@ void renderWater(Shader &waterShader, VAO waterVAO, VBO waterVBO, glm::vec3 view
 	waterVAO.unbind();
 }
 
-void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection)
+void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec4 clip_plane, glm::mat4 view, glm::mat4 projection, uint diffuseMap, uint normalMap)
 {
 	groundShader.use();
 
@@ -384,6 +390,10 @@ void renderGround(Shader &groundShader, VAO groundVAO, VBO groundVBO, glm::vec4 
 	glUniform4fv(glGetUniformLocation(groundShader.id, "clipPlane"), 1, glm::value_ptr(clip_plane));
 
 	groundVAO.bind();
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, diffuseMap);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, normalMap);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	groundVAO.unbind();
 }
