@@ -22,7 +22,7 @@ void main()
 
     //fresnel effect
     vec3 viewDir = normalize(viewPos - fragPos);
-    fresnelFactor = max(dot(viewDir, fragNormal), 0.f);
+    fresnelFactor = pow(max(dot(viewDir, fragNormal), 0.f), 0.5f);
 
     fragColor = mix(reflectionColor, refractionColor, fresnelFactor);
     //fragColor = vec4(vec3(fresnelFactor), 1.f);

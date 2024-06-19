@@ -205,20 +205,15 @@ int main()
 
 		glm::mat4 view = glm::mat4(1.f);
 		glm::mat4 projection = glm::mat4(1.f);
-
-		view = glm::translate(view, forShader.view_position);
-		// view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
-		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
 		projection = glm::perspective(glm::radians(45.f), float(SCR_WIDTH / SCR_HEIGHT), 0.1f, 100.f);
 
 		// reflection framebuffer
-		float distance = 2 * (forShader.view_position.y + 0.7f);
+		float distance = 2 * (forShader.view_position.y - 0.5f);
+		glm::vec3 reflectionCamPos = forShader.view_position;
+		reflectionCamPos.y += distance;
 		view = glm::mat4(1.f);
-		view = glm::translate(view, forShader.view_position);
-		view = glm::translate(view, glm::vec3(0.f, distance, 0.f));
 		// view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
-		view = glm::rotate(view, glm::radians(-10.f), glm::vec3(1.f, 0.f, 0.f));
+		view = glm::lookAt(reflectionCamPos, reflectionCamPos + glm::vec3(view[2]), glm::vec3(0.f, 1.f, 0.f));
 		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
 		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
 
@@ -233,18 +228,17 @@ int main()
 		glCullFace(GL_FRONT);
 		renderPool(poolShader, poolVAO, poolVBO, forShader.light_direction, poolDiffuseMap, poolNormalMap, reflectionClippingPlane, view, projection, forShader.view_position);
 
-		view = glm::translate(view, glm::vec3(0.f, -distance, 0.f));
-		view = glm::rotate(view, glm::radians(10.f), glm::vec3(1.f, 0.f, 0.f));
-
 		// ####################################################################################
 
+		glm::mat4 withoutYaw = glm::mat4(1.f);
 		view = glm::mat4(1.f);
 		view = glm::translate(view, forShader.view_position);
 		// view = glm::rotate(view, glm::radians(45.f), glm::vec3(0.f, 1.f, 0.f));
 		view = glm::rotate(view, glm::radians(angle_y) * sensetivity_y, glm::vec3(1.f, 0.f, 0.f));
+		withoutYaw = view;
 		view = glm::rotate(view, glm::radians(angle_x) * sensetivity_x, glm::vec3(0.f, 1.f, 0.f));
 
-		transformedViewPos = glm::vec3(view * glm::vec4(forShader.view_position, 1.f));
+		transformedViewPos = glm::mat3(withoutYaw) * forShader.view_position, 1.f;
 
 		// refraction framebuffer
 		glBindFramebuffer(GL_FRAMEBUFFER, refractionFramebuffer);
